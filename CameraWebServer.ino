@@ -7,33 +7,12 @@
 //            Partial images will be transmitted if image exceeds buffer size
 //
 //            You must select partition scheme from the board menu that has at least 3MB APP space.
-//            Face Recognition is DISABLED for ESP32 and ESP32-S2, because it takes up from 15
-//            seconds to process single frame. Face Detection is ENABLED if PSRAM is enabled as well
 
-// ===================
-// Select camera model
-// ===================
-//#define CAMERA_MODEL_WROVER_KIT // Has PSRAM
-//#define CAMERA_MODEL_ESP_EYE  // Has PSRAM
-//#define CAMERA_MODEL_ESP32S3_EYE // Has PSRAM
-//#define CAMERA_MODEL_M5STACK_PSRAM // Has PSRAM
-//#define CAMERA_MODEL_M5STACK_V2_PSRAM // M5Camera version B Has PSRAM
-//#define CAMERA_MODEL_M5STACK_WIDE // Has PSRAM
-//#define CAMERA_MODEL_M5STACK_ESP32CAM // No PSRAM
-//#define CAMERA_MODEL_M5STACK_UNITCAM // No PSRAM
-//#define CAMERA_MODEL_M5STACK_CAMS3_UNIT  // Has PSRAM
 #define CAMERA_MODEL_AI_THINKER // Has PSRAM
-//#define CAMERA_MODEL_TTGO_T_JOURNAL // No PSRAM
-//#define CAMERA_MODEL_XIAO_ESP32S3 // Has PSRAM
-// ** Espressif Internal Boards **
-//#define CAMERA_MODEL_ESP32_CAM_BOARD
-//#define CAMERA_MODEL_ESP32S2_CAM_BOARD
-//#define CAMERA_MODEL_ESP32S3_CAM_LCD
-//#define CAMERA_MODEL_DFRobot_FireBeetle2_ESP32S3 // Has PSRAM
-//#define CAMERA_MODEL_DFRobot_Romeo_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
 #define LED_GPIO_NUM   4
-#define LED_BUILTIN 4
+#define TIMEOUT_MINS   5       * 60 * 1000 //30 minutes in milliseconds
+
 char auth[] = "fEZlZOio7CS1nBXNm3A8HR5DysrzIoYW";
 // ===========================
 // Enter your WiFi credentials
@@ -49,11 +28,13 @@ WidgetTerminal terminal(V10);
 
 bool flashlight = false;
 
-/*BLYNK_WRITE(V12)
-{
-  if (param.asInt() == 1) {flashlight = true;}
-  if (param.asInt() == 0) {flashlight = false;}
-}*/
+void gotosleep(void) {
+  esp_camera_deinit();
+  WiFi.disconnect();
+  delay(1);
+  esp_deep_sleep_start();
+  delay(1000);
+}
 
 
 void setup() {
@@ -183,15 +164,19 @@ void setup() {
 
     Blynk.config(auth, IPAddress(192, 168, 50, 197), 8080);
   Blynk.connect();
-  terminal.print("Camera v1.3 Ready! Use 'http://");
+  terminal.print("Camera Signal: -");
+  terminal.print(WiFi.RSSI());
+  terminal.print("dB");
+  terminal.print("Camera v1.4 Ready! Use 'http://");
   terminal.print(WiFi.localIP());
   terminal.println("' to connect");
+
   terminal.flush();
 
 }
 
 void loop() {
   Blynk.run();
-ArduinoOTA.handle();
- delay(10);
+  ArduinoOTA.handle();
+  if (millis() > TIMEOUT_MINS) {gotosleep();}
 }
