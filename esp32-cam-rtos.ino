@@ -60,7 +60,47 @@ char auth[] = "fEZlZOio7CS1nBXNm3A8HR5DysrzIoYW";
 //OV2640 cam;
 WidgetTerminal terminal(V10);
 
+BLYNK_WRITE(V10) {
 
+    terminal.println("FHD");
+    terminal.println("HD");
+    terminal.println("VGA");
+    terminal.println("QVGA");
+
+  if (String("FHD") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Setting cam res to FHD 1980x1080.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_FHD);
+    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+    esp_camera_fb_return(fb);                     //release image buffer
+  }
+  if (String("HD") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Setting cam res to HD 1280x720.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_HD);
+    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+    esp_camera_fb_return(fb);       
+  }
+  if (String("VGA") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Setting cam res to VGA 640x480.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_VGA);
+    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+    esp_camera_fb_return(fb);       
+  }
+  if (String("QVGA") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Setting cam res to QVGA 320x240.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_QVGA);
+    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+    esp_camera_fb_return(fb);       
+  }
+  terminal.flush();
+}
 
 void gotosleep(void) {
   esp_camera_deinit();
@@ -471,7 +511,7 @@ void setup()
     //    .frame_size     = FRAMESIZE_QVGA,
     //    .frame_size     = FRAMESIZE_UXGA,
     //    .frame_size     = FRAMESIZE_SVGA,
-    .frame_size     = FRAMESIZE_XGA,
+    .frame_size     = FRAMESIZE_FHD,
     //    .frame_size     = FRAMESIZE_VGA,
     //    .frame_size     = FRAMESIZE_UXGA,
     .jpeg_quality   = 16,
@@ -555,8 +595,12 @@ void setup()
   terminal.print("Camera v1.5 Ready! Use 'http://");
   terminal.print(ip);
   terminal.println("/mjpeg/1' to connect");
+  terminal.println("/jpg for still image.");
 
   terminal.flush();
+    s->set_framesize(s, FRAMESIZE_QVGA);
+    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+    esp_camera_fb_return(fb);       
 }
 
 void loop() {
