@@ -23,7 +23,7 @@
    PSRAM: Enabled
 */
 #define LED_GPIO_NUM   4
-#define TIMEOUT_MINS   5       * 60 * 1000 //30 minutes in milliseconds
+#define TIMEOUT_MINS   90       * 60 * 1000 //30 minutes in milliseconds
 // ESP32 has two cores: APPlication core and PROcess core (the one that runs ESP32 SDK stack)
 #define APP_CPU 1
 #define PRO_CPU 0
@@ -56,17 +56,12 @@
   #define PWD1 "springchicken"
 char auth[] = "fEZlZOio7CS1nBXNm3A8HR5DysrzIoYW";
 //#include "home_wifi_multi.h"
-
+int menuValue;
+bool changeformat = false;
 //OV2640 cam;
 WidgetTerminal terminal(V10);
 
 BLYNK_WRITE(V10) {
-
-    terminal.println("FHD");
-    terminal.println("HD");
-    terminal.println("VGA");
-    terminal.println("QVGA");
-
   if (String("FHD") == param.asStr()) {
     terminal.println("");
     terminal.println("Setting cam res to FHD 1980x1080.");
@@ -99,8 +94,26 @@ BLYNK_WRITE(V10) {
     camera_fb_t *fb = esp_camera_fb_get();        //take a picture
     esp_camera_fb_return(fb);       
   }
+  if (String("cwifi") == param.asStr()) {
+    terminal.println("");
+    terminal.print("Camera Signal: -");
+    terminal.print(WiFi.RSSI());
+    terminal.print("dB");
+  }
   terminal.flush();
 }
+
+BLYNK_WRITE(V13)
+{
+   menuValue = param.asInt(); // assigning incoming value from pin V1 to a variable
+   changeformat = true;
+}
+
+BLYNK_WRITE(V14) {
+  analogWrite(LED_GPIO_NUM, param.asInt());
+}
+
+
 
 void gotosleep(void) {
   esp_camera_deinit();
@@ -433,7 +446,8 @@ void handleNotFound()
 // ==== SETUP method ==================================================================
 void setup()
 {
-
+ pinMode(LED_GPIO_NUM, OUTPUT);
+ digitalWrite(LED_GPIO_NUM, LOW);
   // Setup Serial connection:
   Serial.begin(115200);
   delay(1000); // wait for a second to let Serial connect
@@ -589,10 +603,11 @@ void setup()
 
     Blynk.config(auth, IPAddress(192, 168, 50, 197), 8080);
   Blynk.connect();
+  terminal.println("");
   terminal.print("Camera Signal: -");
   terminal.print(WiFi.RSSI());
-  terminal.print("dB");
-  terminal.print("Camera v1.5 Ready! Use 'http://");
+  terminal.println("dB");
+  terminal.print("Camera v1.6 Ready! Use 'http://");
   terminal.print(ip);
   terminal.println("/mjpeg/1' to connect");
   terminal.println("/jpg for still image.");
@@ -608,4 +623,54 @@ void loop() {
   ArduinoOTA.handle();
   if (millis() > TIMEOUT_MINS) {gotosleep();}
   vTaskDelay(1000);
+  if (changeformat){
+    switch (menuValue) {
+      case 1:   {
+          terminal.println("");
+          terminal.println("Setting cam res to QVGA 320x240.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_QVGA);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);    
+      }
+          break;
+      case 2: {
+          terminal.println("");
+          terminal.println("Setting cam res to VGA 640x480.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_VGA);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);   
+      }  
+          break;  
+      case 3: {
+          terminal.println("");
+          terminal.println("Setting cam res to HD 1280x720.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_HD);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);   
+      }    
+          break;
+      case 4: {
+          terminal.println("");
+          terminal.println("Setting cam res to FHD 1980x1080.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_FHD);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);        
+          }             //release image buffer
+          break; 
+    }
+    terminal.flush();
+    changeformat = false;
+  }
 }
