@@ -23,7 +23,7 @@
    PSRAM: Enabled
 */
 #define LED_GPIO_NUM   4
-#define TIMEOUT_MINS   90       * 60 * 1000 //30 minutes in milliseconds
+#define TIMEOUT_MINS   15       * 60 * 1000 //30 minutes in milliseconds
 // ESP32 has two cores: APPlication core and PROcess core (the one that runs ESP32 SDK stack)
 #define APP_CPU 1
 #define PRO_CPU 0
@@ -61,22 +61,28 @@ bool changeformat = false;
 //OV2640 cam;
 WidgetTerminal terminal(V10);
 
+
+
 BLYNK_WRITE(V10) {
-  if (String("FHD") == param.asStr()) {
-    terminal.println("");
-    terminal.println("Setting cam res to FHD 1980x1080.");
-    sensor_t* s = esp_camera_sensor_get();
-    s->set_framesize(s, FRAMESIZE_FHD);
-    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-    esp_camera_fb_return(fb);                     //release image buffer
+  if (String("UXGA") == param.asStr()) {
+          terminal.println("");
+          terminal.println("Setting cam res to UXGA 1600x1200.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_UXGA);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);                  //release image buffer
   }
-  if (String("HD") == param.asStr()) {
-    terminal.println("");
-    terminal.println("Setting cam res to HD 1280x720.");
-    sensor_t* s = esp_camera_sensor_get();
-    s->set_framesize(s, FRAMESIZE_HD);
-    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-    esp_camera_fb_return(fb);       
+  if (String("SXGA") == param.asStr()) {
+          terminal.println("");
+          terminal.println("Setting cam res to SXGA 1280x1024.");
+          sensor_t* s = esp_camera_sensor_get();
+          s->set_framesize(s, FRAMESIZE_SXGA);
+          delay(10);
+          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          delay(10);
+          esp_camera_fb_return(fb);   
   }
   if (String("VGA") == param.asStr()) {
     terminal.println("");
@@ -525,7 +531,7 @@ void setup()
     //    .frame_size     = FRAMESIZE_QVGA,
     //    .frame_size     = FRAMESIZE_UXGA,
     //    .frame_size     = FRAMESIZE_SVGA,
-    .frame_size     = FRAMESIZE_FHD,
+    .frame_size     = FRAMESIZE_UXGA,
     //    .frame_size     = FRAMESIZE_VGA,
     //    .frame_size     = FRAMESIZE_UXGA,
     .jpeg_quality   = 16,
@@ -649,9 +655,9 @@ void loop() {
           break;  
       case 3: {
           terminal.println("");
-          terminal.println("Setting cam res to HD 1280x720.");
+          terminal.println("Setting cam res to SXGA 1280x1024.");
           sensor_t* s = esp_camera_sensor_get();
-          s->set_framesize(s, FRAMESIZE_HD);
+          s->set_framesize(s, FRAMESIZE_SXGA);
           delay(10);
           camera_fb_t *fb = esp_camera_fb_get();        //take a picture
           delay(10);
@@ -660,9 +666,9 @@ void loop() {
           break;
       case 4: {
           terminal.println("");
-          terminal.println("Setting cam res to FHD 1980x1080.");
+          terminal.println("Setting cam res to UXGA 1600x1200.");
           sensor_t* s = esp_camera_sensor_get();
-          s->set_framesize(s, FRAMESIZE_FHD);
+          s->set_framesize(s, FRAMESIZE_UXGA);
           delay(10);
           camera_fb_t *fb = esp_camera_fb_get();        //take a picture
           delay(10);
