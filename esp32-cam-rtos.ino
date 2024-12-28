@@ -22,8 +22,8 @@
    Partrition: Minimal SPIFFS
    PSRAM: Enabled
 */
-#define LED_GPIO_NUM   4
-#define TIMEOUT_MINS   15       * 60 * 1000 //30 minutes in milliseconds
+#define LED_GPIO_NUM 4
+#define TIMEOUT_MINS 15 * 60 * 1000  //30 minutes in milliseconds
 // ESP32 has two cores: APPlication core and PROcess core (the one that runs ESP32 SDK stack)
 #define APP_CPU 1
 #define PRO_CPU 0
@@ -47,13 +47,13 @@
 //#define CAMERA_MODEL_M5STACK_WIDE
 #define CAMERA_MODEL_AI_THINKER
 
-#define MAX_CLIENTS   10
+#define MAX_CLIENTS 10
 
 #include "camera_pins.h"
 
 
-  #define SSID1 "mikesnet"
-  #define PWD1 "springchicken"
+#define SSID1 "mikesnet"
+#define PWD1 "springchicken"
 char auth[] = "fEZlZOio7CS1nBXNm3A8HR5DysrzIoYW";
 //#include "home_wifi_multi.h"
 int menuValue;
@@ -61,44 +61,45 @@ bool changeformat = false;
 //OV2640 cam;
 WidgetTerminal terminal(V10);
 
-
+bool changeq = false;
+bool stayon = false;
 
 BLYNK_WRITE(V10) {
   if (String("UXGA") == param.asStr()) {
-          terminal.println("");
-          terminal.println("Setting cam res to UXGA 1600x1200.");
-          sensor_t* s = esp_camera_sensor_get();
-          s->set_framesize(s, FRAMESIZE_UXGA);
-          delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-          delay(10);
-          esp_camera_fb_return(fb);                  //release image buffer
+    terminal.println("");
+    terminal.println("Setting cam res to UXGA 1600x1200.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_UXGA);
+    delay(10);
+    camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+    delay(10);
+    esp_camera_fb_return(fb);  //release image buffer
   }
   if (String("SXGA") == param.asStr()) {
-          terminal.println("");
-          terminal.println("Setting cam res to SXGA 1280x1024.");
-          sensor_t* s = esp_camera_sensor_get();
-          s->set_framesize(s, FRAMESIZE_SXGA);
-          delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-          delay(10);
-          esp_camera_fb_return(fb);   
+    terminal.println("");
+    terminal.println("Setting cam res to SXGA 1280x1024.");
+    sensor_t* s = esp_camera_sensor_get();
+    s->set_framesize(s, FRAMESIZE_SXGA);
+    delay(10);
+    camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+    delay(10);
+    esp_camera_fb_return(fb);
   }
   if (String("VGA") == param.asStr()) {
     terminal.println("");
     terminal.println("Setting cam res to VGA 640x480.");
     sensor_t* s = esp_camera_sensor_get();
     s->set_framesize(s, FRAMESIZE_VGA);
-    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-    esp_camera_fb_return(fb);       
+    camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+    esp_camera_fb_return(fb);
   }
   if (String("QVGA") == param.asStr()) {
     terminal.println("");
     terminal.println("Setting cam res to QVGA 320x240.");
     sensor_t* s = esp_camera_sensor_get();
     s->set_framesize(s, FRAMESIZE_QVGA);
-    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-    esp_camera_fb_return(fb);       
+    camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+    esp_camera_fb_return(fb);
   }
   if (String("cwifi") == param.asStr()) {
     terminal.println("");
@@ -106,13 +107,38 @@ BLYNK_WRITE(V10) {
     terminal.print(WiFi.RSSI());
     terminal.print("dB");
   }
+
+  if (changeq) {
+      changeq = false;
+      int newq = param.asInt();
+      sensor_t* s = esp_camera_sensor_get();
+      s->set_quality(s, newq);
+      camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+      esp_camera_fb_return(fb);
+      terminal.print("New quality set to ");
+      terminal.print(newq);
+      terminal.println(".");
+    }
+  if (String("q") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Change quality to what value? (0-63)");
+    changeq = true;
+  }
+  if (String("stayon") == param.asStr()) {
+    terminal.println("");
+    terminal.println("Forcing camera to stay on.");
+    stayon = true;
+  }
   terminal.flush();
 }
 
-BLYNK_WRITE(V13)
-{
-   menuValue = param.asInt(); // assigning incoming value from pin V1 to a variable
-   changeformat = true;
+BLYNK_CONNECTED() {
+  Blynk.virtualWrite(V13, 1);
+}
+
+BLYNK_WRITE(V13) {
+  menuValue = param.asInt();  // assigning incoming value from pin V1 to a variable
+  changeformat = true;
 }
 
 BLYNK_WRITE(V14) {
@@ -133,10 +159,10 @@ WebServer server(80);
 
 // ===== rtos task handles =========================
 // Streaming is implemented with 3 tasks:
-TaskHandle_t tMjpeg;   // handles client connections to the webserver
-TaskHandle_t tCam;     // handles getting picture frames from the camera and storing them locally
+TaskHandle_t tMjpeg;  // handles client connections to the webserver
+TaskHandle_t tCam;    // handles getting picture frames from the camera and storing them locally
 
-uint8_t       noActiveClients;       // number of active clients
+uint8_t noActiveClients;  // number of active clients
 
 // frameSync semaphore is used to prevent streaming buffer as it is replaced with the next frame
 SemaphoreHandle_t frameSync = NULL;
@@ -155,19 +181,19 @@ void mjpegCB(void* pvParameters) {
 
   // Creating frame synchronization semaphore and initializing it
   frameSync = xSemaphoreCreateBinary();
-  xSemaphoreGive( frameSync );
+  xSemaphoreGive(frameSync);
 
   //=== setup section  ==================
 
   //  Creating RTOS task for grabbing frames from the camera
   xTaskCreatePinnedToCore(
-    camCB,        // callback
-    "cam",        // name
-    4 * 1024,       // stacj size
-    NULL,         // parameters
-    2,            // priority
-    &tCam,        // RTOS task handle
-    PRO_CPU);     // core
+    camCB,     // callback
+    "cam",     // name
+    4 * 1024,  // stacj size
+    NULL,      // parameters
+    2,         // priority
+    &tCam,     // RTOS task handle
+    PRO_CPU);  // core
 
   //  Registering webserver handling routines
   server.on("/mjpeg/1", HTTP_GET, handleJPGSstream);
@@ -194,8 +220,8 @@ void mjpegCB(void* pvParameters) {
 
 // Current frame information
 volatile uint32_t frameNumber;
-volatile size_t   camSize;    // size of the current frame, byte
-volatile char*    camBuf;      // pointer to the current frame
+volatile size_t camSize;  // size of the current frame, byte
+volatile char* camBuf;    // pointer to the current frame
 
 
 // ==== RTOS task to grab frames from the camera =========================
@@ -230,7 +256,7 @@ void camCB(void* pvParameters) {
     }
 
     //  Copy current frame into local buffer
-    char* b = (char *)fb->buf;
+    char* b = (char*)fb->buf;
     memcpy(fbs[ifb], b, s);
     esp_camera_fb_return(fb);
 
@@ -243,14 +269,14 @@ void camCB(void* pvParameters) {
     //    xSemaphoreTake( frameSync, portMAX_DELAY );
 
     //  Do not allow frame copying while switching the current frame
-    xSemaphoreTake( frameSync, xFrequency );
+    xSemaphoreTake(frameSync, xFrequency);
     camBuf = fbs[ifb];
     camSize = s;
     ifb++;
     ifb &= 1;  // this should produce 1, 0, 1, 0, 1 ... sequence
     frameNumber++;
     //  Let anyone waiting for a frame know that the frame is ready
-    xSemaphoreGive( frameSync );
+    xSemaphoreGive(frameSync);
 
     //  Immediately let other (streaming) tasks run
     taskYIELD();
@@ -258,7 +284,7 @@ void camCB(void* pvParameters) {
     //  If streaming task has suspended itself (no active clients to stream to)
     //  there is no need to grab frames from the camera. We can save some juice
     //  by suspedning the tasks
-    if ( noActiveClients == 0 ) {
+    if (noActiveClients == 0) {
       Serial.printf("mjpegCB: free heap           : %d\n", ESP.getFreeHeap());
       Serial.printf("mjpegCB: min free heap)      : %d\n", ESP.getMinFreeHeap());
       Serial.printf("mjpegCB: max alloc free heap : %d\n", ESP.getMaxAllocHeap());
@@ -277,7 +303,7 @@ char* allocateMemory(char* aPtr, size_t aSize) {
   if (aPtr != NULL) free(aPtr);
 
   char* ptr = NULL;
-  ptr = (char*) ps_malloc(aSize);
+  ptr = (char*)ps_malloc(aSize);
 
   // If the memory pointer is NULL, we were not able to allocate any memory, and that is a terminal condition.
   if (ptr == NULL) {
@@ -290,8 +316,8 @@ char* allocateMemory(char* aPtr, size_t aSize) {
 
 
 // ==== STREAMING ======================================================
-const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
-                      "Access-Control-Allow-Origin: *\r\n" \
+const char HEADER[] = "HTTP/1.1 200 OK\r\n"
+                      "Access-Control-Allow-Origin: *\r\n"
                       "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
 const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
 const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
@@ -301,17 +327,16 @@ const int cntLen = strlen(CTNTTYPE);
 
 
 struct streamInfo {
-  uint32_t        frame;
-  WiFiClient      client;
-  TaskHandle_t    task;
-  char*           buffer;
-  size_t          len;
+  uint32_t frame;
+  WiFiClient client;
+  TaskHandle_t task;
+  char* buffer;
+  size_t len;
 };
 
 // ==== Handle connection request from clients ===============================
-void handleJPGSstream(void)
-{
-  if ( noActiveClients >= MAX_CLIENTS ) return;
+void handleJPGSstream(void) {
+  if (noActiveClients >= MAX_CLIENTS) return;
   Serial.printf("handleJPGSstream start: free heap  : %d\n", ESP.getFreeHeap());
 
   streamInfo* info = new streamInfo;
@@ -323,14 +348,14 @@ void handleJPGSstream(void)
 
   //  Creating task to push the stream to all connected clients
   int rc = xTaskCreatePinnedToCore(
-             streamCB,
-             "strmCB",
-             3 * 1024,
-             (void*) info,
-             2,
-             &info->task,
-             APP_CPU);
-  if ( rc != pdPASS ) {
+    streamCB,
+    "strmCB",
+    3 * 1024,
+    (void*)info,
+    2,
+    &info->task,
+    APP_CPU);
+  if (rc != pdPASS) {
     Serial.printf("handleJPGSstream: error creating RTOS task. rc = %d\n", rc);
     Serial.printf("handleJPGSstream: free heap  : %d\n", ESP.getFreeHeap());
     //    Serial.printf("stk high wm: %d\n", uxTaskGetStackHighWaterMark(tSend));
@@ -340,19 +365,19 @@ void handleJPGSstream(void)
   noActiveClients++;
 
   // Wake up streaming tasks, if they were previously suspended:
-  if ( eTaskGetState( tCam ) == eSuspended ) vTaskResume( tCam );
+  if (eTaskGetState(tCam) == eSuspended) vTaskResume(tCam);
 }
 
 
 // ==== Actually stream content to all connected clients ========================
-void streamCB(void * pvParameters) {
+void streamCB(void* pvParameters) {
   char buf[16];
   TickType_t xLastWakeTime;
   TickType_t xFrequency;
 
-  streamInfo* info = (streamInfo*) pvParameters;
+  streamInfo* info = (streamInfo*)pvParameters;
 
-  if ( info == NULL ) {
+  if (info == NULL) {
     Serial.println("streamCB: a NULL pointer passed");
   }
   //  Immediately send this client a header
@@ -365,42 +390,40 @@ void streamCB(void * pvParameters) {
 
   for (;;) {
     //  Only bother to send anything if there is someone watching
-    if ( info->client.connected() ) {
+    if (info->client.connected()) {
 
-      if ( info->frame != frameNumber) {
-        xSemaphoreTake( frameSync, portMAX_DELAY );
-        if ( info->buffer == NULL ) {
-          info->buffer = allocateMemory (info->buffer, camSize);
+      if (info->frame != frameNumber) {
+        xSemaphoreTake(frameSync, portMAX_DELAY);
+        if (info->buffer == NULL) {
+          info->buffer = allocateMemory(info->buffer, camSize);
           info->len = camSize;
-        }
-        else {
-          if ( camSize > info->len ) {
-            info->buffer = allocateMemory (info->buffer, camSize);
+        } else {
+          if (camSize > info->len) {
+            info->buffer = allocateMemory(info->buffer, camSize);
             info->len = camSize;
           }
         }
-        memcpy(info->buffer, (const void*) camBuf, info->len);
-        xSemaphoreGive( frameSync );
+        memcpy(info->buffer, (const void*)camBuf, info->len);
+        xSemaphoreGive(frameSync);
         taskYIELD();
 
         info->frame = frameNumber;
         info->client.write(CTNTTYPE, cntLen);
         sprintf(buf, "%d\r\n\r\n", info->len);
         info->client.write(buf, strlen(buf));
-        info->client.write((char*) info->buffer, (size_t)info->len);
+        info->client.write((char*)info->buffer, (size_t)info->len);
         info->client.write(BOUNDARY, bdrLen);
         info->client.flush();
       }
-    }
-    else {
+    } else {
       //  client disconnected - clean up.
       noActiveClients--;
       Serial.printf("streamCB: Stream Task stack wtrmark  : %d\n", uxTaskGetStackHighWaterMark(info->task));
       Serial.flush();
       info->client.flush();
       info->client.stop();
-      if ( info->buffer ) {
-        free( info->buffer );
+      if (info->buffer) {
+        free(info->buffer);
         info->buffer = NULL;
       }
       delete info;
@@ -415,14 +438,13 @@ void streamCB(void * pvParameters) {
 
 
 
-const char JHEADER[] = "HTTP/1.1 200 OK\r\n" \
-                       "Content-disposition: inline; filename=capture.jpg\r\n" \
+const char JHEADER[] = "HTTP/1.1 200 OK\r\n"
+                       "Content-disposition: inline; filename=capture.jpg\r\n"
                        "Content-type: image/jpeg\r\n\r\n";
 const int jhdLen = strlen(JHEADER);
 
 // ==== Serve up one JPEG frame =============================================
-void handleJPG(void)
-{
+void handleJPG(void) {
   WiFiClient client = server.client();
 
   if (!client.connected()) return;
@@ -434,8 +456,7 @@ void handleJPG(void)
 
 
 // ==== Handle invalid URL requests ============================================
-void handleNotFound()
-{
+void handleNotFound() {
   String message = "Server is running!\n\n";
   message += "URI: ";
   message += server.uri();
@@ -450,13 +471,12 @@ void handleNotFound()
 
 
 // ==== SETUP method ==================================================================
-void setup()
-{
- pinMode(LED_GPIO_NUM, OUTPUT);
- digitalWrite(LED_GPIO_NUM, LOW);
+void setup() {
+  pinMode(LED_GPIO_NUM, OUTPUT);
+  digitalWrite(LED_GPIO_NUM, LOW);
   // Setup Serial connection:
   Serial.begin(115200);
-  delay(1000); // wait for a second to let Serial connect
+  delay(1000);  // wait for a second to let Serial connect
   Serial.printf("setup: free heap  : %d\n", ESP.getFreeHeap());
 
   // Configure the camera
@@ -491,27 +511,27 @@ void setup()
   //  config.fb_count = 2;
 
   static camera_config_t camera_config = {
-    .pin_pwdn       = PWDN_GPIO_NUM,
-    .pin_reset      = RESET_GPIO_NUM,
-    .pin_xclk       = XCLK_GPIO_NUM,
-    .pin_sscb_sda   = SIOD_GPIO_NUM,
-    .pin_sscb_scl   = SIOC_GPIO_NUM,
-    .pin_d7         = Y9_GPIO_NUM,
-    .pin_d6         = Y8_GPIO_NUM,
-    .pin_d5         = Y7_GPIO_NUM,
-    .pin_d4         = Y6_GPIO_NUM,
-    .pin_d3         = Y5_GPIO_NUM,
-    .pin_d2         = Y4_GPIO_NUM,
-    .pin_d1         = Y3_GPIO_NUM,
-    .pin_d0         = Y2_GPIO_NUM,
-    .pin_vsync      = VSYNC_GPIO_NUM,
-    .pin_href       = HREF_GPIO_NUM,
-    .pin_pclk       = PCLK_GPIO_NUM,
+    .pin_pwdn = PWDN_GPIO_NUM,
+    .pin_reset = RESET_GPIO_NUM,
+    .pin_xclk = XCLK_GPIO_NUM,
+    .pin_sscb_sda = SIOD_GPIO_NUM,
+    .pin_sscb_scl = SIOC_GPIO_NUM,
+    .pin_d7 = Y9_GPIO_NUM,
+    .pin_d6 = Y8_GPIO_NUM,
+    .pin_d5 = Y7_GPIO_NUM,
+    .pin_d4 = Y6_GPIO_NUM,
+    .pin_d3 = Y5_GPIO_NUM,
+    .pin_d2 = Y4_GPIO_NUM,
+    .pin_d1 = Y3_GPIO_NUM,
+    .pin_d0 = Y2_GPIO_NUM,
+    .pin_vsync = VSYNC_GPIO_NUM,
+    .pin_href = HREF_GPIO_NUM,
+    .pin_pclk = PCLK_GPIO_NUM,
 
-    .xclk_freq_hz   = 20000000,
-    .ledc_timer     = LEDC_TIMER_0,
-    .ledc_channel   = LEDC_CHANNEL_0,
-    .pixel_format   = PIXFORMAT_JPEG,
+    .xclk_freq_hz = 20000000,
+    .ledc_timer = LEDC_TIMER_0,
+    .ledc_channel = LEDC_CHANNEL_0,
+    .pixel_format = PIXFORMAT_JPEG,
     /*
         FRAMESIZE_96X96,    // 96x96
         FRAMESIZE_QQVGA,    // 160x120
@@ -531,11 +551,11 @@ void setup()
     //    .frame_size     = FRAMESIZE_QVGA,
     //    .frame_size     = FRAMESIZE_UXGA,
     //    .frame_size     = FRAMESIZE_SVGA,
-    .frame_size     = FRAMESIZE_UXGA,
+    .frame_size = FRAMESIZE_UXGA,
     //    .frame_size     = FRAMESIZE_VGA,
     //    .frame_size     = FRAMESIZE_UXGA,
-    .jpeg_quality   = 16,
-    .fb_count       = 2
+    .jpeg_quality = 16,
+    .fb_count = 2
   };
 
 #if defined(CAMERA_MODEL_ESP_EYE)
@@ -559,8 +579,7 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID1, PWD1);
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(F("."));
   }
@@ -607,7 +626,7 @@ void setup()
 
 
 
-    Blynk.config(auth, IPAddress(192, 168, 50, 197), 8080);
+  Blynk.config(auth, IPAddress(192, 168, 50, 197), 8080);
   Blynk.connect();
   terminal.println("");
   terminal.print("Camera Signal: -");
@@ -619,62 +638,66 @@ void setup()
   terminal.println("/jpg for still image.");
 
   terminal.flush();
-    s->set_framesize(s, FRAMESIZE_QVGA);
-    camera_fb_t *fb = esp_camera_fb_get();        //take a picture
-    esp_camera_fb_return(fb);       
+  s->set_framesize(s, FRAMESIZE_QVGA);
+  camera_fb_t* fb = esp_camera_fb_get();  //take a picture
+  esp_camera_fb_return(fb);
 }
 
 void loop() {
   Blynk.run();
   ArduinoOTA.handle();
-  if (millis() > TIMEOUT_MINS) {gotosleep();}
+  if ((millis() > TIMEOUT_MINS) && (!stayon)) { gotosleep(); }
   vTaskDelay(1000);
-  if (changeformat){
+  if (changeformat) {
     switch (menuValue) {
-      case 1:   {
+      case 1:
+        {
           terminal.println("");
           terminal.println("Setting cam res to QVGA 320x240.");
           sensor_t* s = esp_camera_sensor_get();
           s->set_framesize(s, FRAMESIZE_QVGA);
           delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          camera_fb_t* fb = esp_camera_fb_get();  //take a picture
           delay(10);
-          esp_camera_fb_return(fb);    
-      }
-          break;
-      case 2: {
+          esp_camera_fb_return(fb);
+        }
+        break;
+      case 2:
+        {
           terminal.println("");
           terminal.println("Setting cam res to VGA 640x480.");
           sensor_t* s = esp_camera_sensor_get();
           s->set_framesize(s, FRAMESIZE_VGA);
           delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          camera_fb_t* fb = esp_camera_fb_get();  //take a picture
           delay(10);
-          esp_camera_fb_return(fb);   
-      }  
-          break;  
-      case 3: {
+          esp_camera_fb_return(fb);
+        }
+        break;
+      case 3:
+        {
           terminal.println("");
           terminal.println("Setting cam res to SXGA 1280x1024.");
           sensor_t* s = esp_camera_sensor_get();
           s->set_framesize(s, FRAMESIZE_SXGA);
           delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          camera_fb_t* fb = esp_camera_fb_get();  //take a picture
           delay(10);
-          esp_camera_fb_return(fb);   
-      }    
-          break;
-      case 4: {
+          esp_camera_fb_return(fb);
+        }
+        break;
+      case 4:
+        {
           terminal.println("");
           terminal.println("Setting cam res to UXGA 1600x1200.");
           sensor_t* s = esp_camera_sensor_get();
           s->set_framesize(s, FRAMESIZE_UXGA);
           delay(10);
-          camera_fb_t *fb = esp_camera_fb_get();        //take a picture
+          camera_fb_t* fb = esp_camera_fb_get();  //take a picture
           delay(10);
-          esp_camera_fb_return(fb);        
-          }             //release image buffer
-          break; 
+          esp_camera_fb_return(fb);
+        }  //release image buffer
+        break;
     }
     terminal.flush();
     changeformat = false;
